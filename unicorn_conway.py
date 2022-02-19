@@ -138,13 +138,12 @@ def StandardActions(action):
         running = False
         return running
     
-    if action == "spawn":
-        cellsC.copy(cellsB)
-        cellsB.iterate_from(cellsA)
-        (cellsA, cellsB) = (cellsB, cellsA)
-        return cellsA, cellsB, cellsC
-
-
+    
+def IterateCells(cellsA, cellsB, cellsC):
+    cellsC.copy(cellsB)
+    cellsB.iterate_from(cellsA)
+    (cellsA, cellsB) = (cellsB, cellsA)
+    return cellsA, cellsB, cellsC
 
 
 cellsA = Cells()
@@ -185,11 +184,13 @@ while running:
         if counter == oscillationCounts:
             counter, start = StandardActions('stable')
         else:
-            cellsA, cellsB, cellsC = StandardActions('spawn')
+            cellsA, cellsB, cellsC = IterateCells(cellsA, cellsB, cellsC)
+            
     
     # At least one cell is alive
     elif cellsA.populated():
-        cellsA, cellsB, cellsC = StandardActions('spawn')
+        cellsA, cellsB, cellsC = IterateCells(cellsA, cellsB, cellsC)
+        
         
     # All cells are dead 
     else:
