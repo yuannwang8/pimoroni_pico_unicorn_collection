@@ -81,7 +81,6 @@ def GenerateColours():
     then constraining them to max of 255
     '''
     cols_rgb_new = [ min(int(lux*x/sum(cols_rgb)),255) for x in cols_rgb]
-    print(cols_rgb_new)
     return cols_rgb_new
 
 
@@ -126,7 +125,25 @@ def StandardLeds(pix):
     utime.sleep_ms(timeStep*5)
 
 
-
+def StandardActions(action):
+    
+    if action in ["extinct", "nuked", "stable"]:
+        StandardLeds(action)
+        counter = 0
+        start = True
+        return counter, start
+    
+    if action == "goodbye":
+        StandardLeds(action)
+        running = False
+        return running
+    
+    
+def IterateCells(cellsA, cellsB, cellsC):
+    cellsC.copy(cellsB)
+    cellsB.iterate_from(cellsA)
+    (cellsA, cellsB) = (cellsB, cellsA)
+    return cellsA, cellsB, cellsC
 
 
 cellsA = Cells()
@@ -158,46 +175,35 @@ while running:
     # Cells are stable and static
     if cellsA.cells == cellsB.cells:
         utime.sleep_ms(timeStep*2)
-        StandardLeds('stable')
-        counter = 0
-        start = True
+        counter, start = StandardActions('stable')
     
     # Cells are in stable oscillation
     elif cellsA.cells == cellsC.cells:
         counter += 1
         # break out of iteration after n repeats
         if counter == oscillationCounts:
-            StandardLeds('stable')
-            counter = 0
-            start = True
+            counter, start = StandardActions('stable')
         else:
-            cellsC.copy(cellsB)
-            cellsB.iterate_from(cellsA)
-            (cellsA, cellsB) = (cellsB, cellsA)
+            cellsA, cellsB, cellsC = IterateCells(cellsA, cellsB, cellsC)
+            
     
     # At least one cell is alive
     elif cellsA.populated():
-        cellsC.copy(cellsB)
-        cellsB.iterate_from(cellsA)
-        (cellsA, cellsB) = (cellsB, cellsA)
+        cellsA, cellsB, cellsC = IterateCells(cellsA, cellsB, cellsC)
+        
         
     # All cells are dead 
     else:
-        StandardLeds('extinct')
-        counter = 0
-        start = True
+        counter, start = StandardActions('extinct')
     
     '''
     Use button B to reset board.
     '''
     if uni.is_pressed(uni.BUTTON_B):
-        StandardLeds('nuked')
-        counter = 0
-        start = True
+        counter, start = StandardActions('nuked')
         
     '''
     Use button X to halt programme
     '''
     if uni.is_pressed(uni.BUTTON_X):
-        StandardLeds('goodbye')
-        running = False
+        running = StandardActions('goodbye')
