@@ -1,10 +1,9 @@
-# Perpetual Conway's Game of Life on pimoroni's Pico Unicorn Pack
+# Conway's Game of Life on Pimoroni's Pico Unicorn Pack
 #
-# based on Steve Baine's post for Pico Unicorn pack on
+# based on and extended from on Steve Baine's post for Pico Unicorn pack on
 # https://forums.pimoroni.com/t/pico-unicorn-pack-not-working-in-micropython/15997
-# note that the picounicorn module comes from pimoroni's custom MicroPython uf2
 #
-# Button Y reseeds Conway.
+# Button B reseeds Conway.
 # Button X exits loop and halts programme.
 
 import picounicorn as uni
@@ -24,6 +23,9 @@ class Cells:
         for x in range(w):
             for y in range(h):
                 self.cells[x][y] = 0
+
+    def populated(self):
+        return sum([sum(c) for c in self.cells]) > 0
 
     def set_random_cells_to_life(self, prob):
         for x in range(w):
@@ -59,6 +61,29 @@ class Cells:
                     self.cells[x][y] = 1 # Born
                 else:
                     self.cells[x][y] = fromCells.cells[x][y] # Unchanged state
+                    
+    def copy(self, fromCells):
+        for x in range(w):
+            for y in range(h):
+                self.cells[x][y] = fromCells.cells[x][y]
+
+
+def GenerateColours():
+    '''To be honest, the settings here are quite subjective'''
+    lux = 300
+    maxrandint = 200
+    
+    '''generate random colours'''
+    cols_rgb = [random.randint(m,min(maxrandint,255)) for m in [100,20,0]]
+    
+    '''
+    scaling colours by proportion to a standardised brightness 
+    then constraining them to max of 255
+    '''
+    cols_rgb_new = [ min(int(lux*x/sum(cols_rgb)),255) for x in cols_rgb]
+    print(cols_rgb_new)
+    return cols_rgb_new
+
 
 def ExportToLeds(cells, cols_rgb):
     for x in range(w):
@@ -67,56 +92,112 @@ def ExportToLeds(cells, cols_rgb):
             r, g, b = [value*c for c in cols_rgb]
             uni.set_pixel(x,y,r,g,b)
 
+
+def StandardLeds(pix):
+    
+    def Clear():
+        [uni.set_pixel_value(x,y,0) for x in range(w) for y in range(h)]
+    
+    '''clear screen'''
+    Clear()
+    utime.sleep_ms(int(timeStep//4)) # find quotient from division
+    
+    '''select image type for display'''
+    if pix == "stable":
+        [uni.set_pixel(x,y,5,30,2) for x in range(w) for y in range(h)]
+        
+    if pix == "extinct":
+        [uni.set_pixel_value(x,y,75) for x in range(w) for y in range(1, h-1)]
+        utime.sleep_ms(timeStep*2)
+        Clear()
+        [uni.set_pixel_value(x,y,50) for x in range(w) for y in range(2, h-2)]
+        utime.sleep_ms(timeStep*2)
+        Clear()
+        [uni.set_pixel_value(x,3,25) for x in range(w)]
+        
+    if pix == "nuked":
+        [uni.set_pixel(x,y,80,10,5) for x in range(w) for y in range(h)]
+        
+    if pix == "goodbye":
+        [uni.set_pixel_value(x,3,25) for x in range(w)]
+        [uni.set_pixel_value(8,y,25) for y in range(h)]
+        
+    ''' pause image '''
+    utime.sleep_ms(timeStep*5)
+
+
+
+
+
 cellsA = Cells()
 cellsB = Cells()
+cellsC = Cells()
 running = True
 start = True
+counter = 0
+timeStep = int(150)
+oscillationCounts = 6
+
 
 
 while running:
     if start:
         cellsA.clear_all()
         cellsA.set_random_cells_to_life(0.2)
-        rgb = [random.randint(m,255) for m in [100, 20, 0]]
+        rgb = GenerateColours()
         start = False
     
     ExportToLeds(cellsA.cells, rgb)
-    utime.sleep_ms(200)
+    utime.sleep_ms(timeStep)
     
     '''
-    If cells are stable, clear board and reseed cells.
-    If all cells are dead, reseed cells.
+    If cells are stable, clear board then reseed board.
+    If all cells are dead, reseed board.
     '''
+    
+    # Cells are stable and static
     if cellsA.cells == cellsB.cells:
-        utime.sleep_ms(400)
-        cellsA.clear_all()
-        ExportToLeds(cellsA.cells,rgb)
-        [uni.set_pixel_value(8,n,130) for n in range(h) ]
-        utime.sleep_ms(400)
+        utime.sleep_ms(timeStep*2)
+        StandardLeds('stable')
+        counter = 0
         start = True
     
-    elif sum([sum(c) for c in cellsA.cells]):    
+    # Cells are in stable oscillation
+    elif cellsA.cells == cellsC.cells:
+        counter += 1
+        # break out of iteration after n repeats
+        if counter == oscillationCounts:
+            StandardLeds('stable')
+            counter = 0
+            start = True
+        else:
+            cellsC.copy(cellsB)
+            cellsB.iterate_from(cellsA)
+            (cellsA, cellsB) = (cellsB, cellsA)
+    
+    # At least one cell is alive
+    elif cellsA.populated():
+        cellsC.copy(cellsB)
         cellsB.iterate_from(cellsA)
         (cellsA, cellsB) = (cellsB, cellsA)
-    
+        
+    # All cells are dead 
     else:
-        [uni.set_pixel_value(n,3,130) for n in range(w) ]
-        utime.sleep_ms(400)
+        StandardLeds('extinct')
+        counter = 0
         start = True
     
     '''
-    Use button Y to reset cells
+    Use button B to reset board.
     '''
-    if uni.is_pressed(uni.BUTTON_Y):
-        cellsA.clear_all()
-        ExportToLeds(cellsA.cells, rgb)
+    if uni.is_pressed(uni.BUTTON_B):
+        StandardLeds('nuked')
+        counter = 0
+        start = True
         
     '''
     Use button X to halt programme
     '''
     if uni.is_pressed(uni.BUTTON_X):
-        cellsA.clear_all()
-        ExportToLeds(cellsA.cells, rgb)
-        [uni.set_pixel_value(n,3,25) for n in range(w) ]
-        [uni.set_pixel_value(8,n,25) for n in range(h) ]
+        StandardLeds('goodbye')
         running = False
