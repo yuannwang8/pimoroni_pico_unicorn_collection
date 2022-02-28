@@ -12,13 +12,19 @@ import utime
 
 uni.init()
 
-w = uni.get_width()
-h = uni.get_height()
 
 class Cells:
     def __init__(self):
         self.cells = [[0]*h for i in range(w)]
-
+        
+    def __str__(self):
+        return '\n'.join(
+            ' '.join(
+                self.draw_cell(x, y) for x in range(w)
+            )
+            for y in range(h)
+        )
+    
     def clear_all(self):
         for x in range(w):
             for y in range(h):
@@ -37,7 +43,10 @@ class Cells:
         x = x % w
         y = y % h
         return self.cells[x][y] == 1
-
+    
+    def draw_cell(self,x,y):
+        return "o" if self.cells[x][y] else " "
+    
     def get_num_live_neighbours(self, x, y):
         num = 0
         num += (1 if self.is_alive(x-1,y-1) else 0)
@@ -127,34 +136,48 @@ def StandardLeds(pix):
 
 def StandardActions(action):
     
+    global counter
+    global start
+    global running
+    
+    if printToConsole:
+        print(action)
+    
     if action in ["extinct", "nuked", "stable"]:
         StandardLeds(action)
         counter = 0
         start = True
-        return counter, start
     
     if action == "goodbye":
         StandardLeds(action)
         running = False
-        return running
     
     
-def IterateCells(cellsA, cellsB, cellsC):
-    cellsC.copy(cellsB)
-    cellsB.iterate_from(cellsA)
-    (cellsA, cellsB) = (cellsB, cellsA)
-    return cellsA, cellsB, cellsC
+def IterateCells(cells1, cells2, cells3):
+    cells3.copy(cells2)
+    cells2.iterate_from(cells1)
+    (cells1, cells2) = (cells2, cells1)
+    if printToConsole:
+        print(cells1)
+        print('--'*w)
+    return cells1, cells2, cells3
 
 
+'''Set-up'''
+w = uni.get_width()
+h = uni.get_height()
 cellsA = Cells()
 cellsB = Cells()
 cellsC = Cells()
 running = True
 start = True
 counter = 0
-timeStep = int(150)
-oscillationCounts = 6
 
+
+'''User Settings'''
+timeStep = int(150) # in milliseconds
+oscillationCounts = 6
+printToConsole = False
 
 
 while running:
@@ -175,14 +198,14 @@ while running:
     # Cells are stable and static
     if cellsA.cells == cellsB.cells:
         utime.sleep_ms(timeStep*2)
-        counter, start = StandardActions('stable')
+        StandardActions('stable')
     
     # Cells are in stable oscillation
     elif cellsA.cells == cellsC.cells:
         counter += 1
         # break out of iteration after n repeats
         if counter == oscillationCounts:
-            counter, start = StandardActions('stable')
+            StandardActions('stable')
         else:
             cellsA, cellsB, cellsC = IterateCells(cellsA, cellsB, cellsC)
             
@@ -194,16 +217,16 @@ while running:
         
     # All cells are dead 
     else:
-        counter, start = StandardActions('extinct')
+        StandardActions('extinct')
     
     '''
     Use button B to reset board.
     '''
     if uni.is_pressed(uni.BUTTON_B):
-        counter, start = StandardActions('nuked')
+        StandardActions('nuked')
         
     '''
     Use button X to halt programme
     '''
     if uni.is_pressed(uni.BUTTON_X):
-        running = StandardActions('goodbye')
+        StandardActions('goodbye')

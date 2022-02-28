@@ -4,3 +4,5 @@ This is a collection of scripts for the [Pimoroni Pico Unicorn](https://shop.pim
 ## Items
 
 1. Conway's Game of Life based on [Steve Baine's post for Pico Unicorn pack on the Pimoroni forum](https://forums.pimoroni.com/t/pico-unicorn-pack-not-working-in-micropython/15997). Button B reseeds the game while button X exits the game altogether.
+
+2. Conway's Game of Life with spontaneous cell generation
