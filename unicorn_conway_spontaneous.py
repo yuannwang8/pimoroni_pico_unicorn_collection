@@ -6,12 +6,16 @@
 #
 # Button B reseeds Conway.
 # Button X exits loop and halts programme.
+#
+# updated to Micropython 1.25.0
 
-import picounicorn as uni
+#import picounicorn as uni
 import random
 import utime
+from picounicorn import PicoUnicorn
 
-uni.init()
+#uni.init()
+uni = PicoUnicorn()
 
 class Cells:
     def __init__(self):
